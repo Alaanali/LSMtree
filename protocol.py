@@ -1,25 +1,19 @@
 import struct
-
+import asyncio
 
 HOST = "127.0.0.1"
 PORT = 65432
 
 
-def sendall(conn, message: bytes):
+async def send_message(writer: asyncio.StreamWriter, message: bytes):
     length_prefix = struct.pack("!I", len(message))
-    conn.sendall(length_prefix +message)
+    writer.write(length_prefix + message)
+    await writer.drain()
 
 
 
-def recvall(conn) -> bytes:
-    buf = b''
-
-    header = conn.recv(4)
-    (message_length,)  = struct.unpack("!I", header)
-    while len(buf) < message_length:
-        buf += conn.recv(message_length - len(buf))
-
-    return buf
-
-
+async def recv_message(reader: asyncio.StreamReader) -> bytes:
+    header = await  reader.readexactly(4)
+    (message_length, )  = struct.unpack("!I", header)
+    return await reader.readexactly(message_length)
 

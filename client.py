@@ -1,10 +1,13 @@
-import socket
-from protocol import HOST, PORT, sendall, recvall
+import asyncio
+from protocol import HOST, PORT, send_message, recv_message
 
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as c:
-    c.connect((HOST, PORT))
-    sendall(c, b"Hello Alaa" * 5000)
-    msg = recvall(c)
+async def main():
+    reader, writer = await asyncio.open_connection(HOST, PORT)
+    await send_message(writer, b"Hello Server")
+    message = await recv_message(reader)
+    print(message)
+    writer.close()
+    await writer.wait_closed()
 
-print(f"Received {msg}")
+asyncio.run(main())

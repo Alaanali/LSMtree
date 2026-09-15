@@ -1,13 +1,23 @@
-import socket
-from protocol import HOST, PORT, sendall, recvall
+import asyncio
+from protocol import HOST, PORT, send_message, recv_message
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((HOST, PORT))
-    s.listen()
-    print(f"Starting server and listening on {HOST}:{PORT}")
-    conn, addr = s.accept()
+async def handler(reader:asyncio.StreamReader, writer:asyncio.StreamWriter):
+    try:
+        while True:
+            message = await recv_message(reader)
+            await send_message(writer, b"Got this from you ((" + message + b")) Thank you")
+    except asyncio.IncompleteReadError:
+        pass
+    finally:
+        writer.close()
+        await writer.wait_closed()
 
-    with conn:
-        print(f"Connected by {addr}")
-        msg = recvall(conn)
-        sendall(conn, b"server got " + msg +  b" Thanks")
+
+async def main():
+    server = await asyncio.start_server(handler, HOST, PORT)
+    print(f"Starting server and accepting connection at {HOST}:{PORT}")
+    async with server:
+        await server.serve_forever()
+
+
+asyncio.run(main())
