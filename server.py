@@ -1,18 +1,31 @@
 import asyncio
-from protocol import HOST, PORT,Operation, Response, encode_response, decode_response,ResponseCode,Message,decode_message, encode_message, send_socket_message, recv_socket_message
+
 from kv_store import KVSTORE
+from protocol import (
+    HOST,
+    PORT,
+    Message,
+    Operation,
+    Response,
+    ResponseCode,
+    decode_message,
+    encode_response,
+    recv_socket_message,
+    send_socket_message,
+)
 
 db = KVSTORE()
+
 
 def _handle_message(buf: bytes) -> Response:
     message: Message = decode_message(buf)
     code = ResponseCode.OK
-    payload = b''
+    payload = b""
     match message.op:
         case Operation.GET:
             value: bytes = db.get(message.key)
             if value is not None:
-                payload= value
+                payload = value
             else:
                 code = ResponseCode.NOT_FOUND
         case Operation.SET:
@@ -21,9 +34,10 @@ def _handle_message(buf: bytes) -> Response:
         case _:
             code = ResponseCode.ERROR
 
-    return  Response(code=code, payload=payload)
+    return Response(code=code, payload=payload)
 
-async def handler(reader:asyncio.StreamReader, writer:asyncio.StreamWriter):
+
+async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     try:
         while True:
             raw_message = await recv_socket_message(reader)
