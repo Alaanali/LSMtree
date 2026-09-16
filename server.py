@@ -1,11 +1,37 @@
 import asyncio
-from protocol import HOST, PORT, send_message, recv_message
+from protocol import HOST, PORT,Operation, Response, encode_response, decode_response,ResponseCode,Message,decode_message, encode_message, send_socket_message, recv_socket_message
+from kv_store import KVSTORE
+
+db = KVSTORE()
+
+def _handle_message(buf: bytes) -> Response:
+    message: Message = decode_message(buf)
+    code = ResponseCode.OK
+    payload = b''
+    match message.op:
+        case Operation.GET:
+            value: bytes = db.get(message.key)
+            if value is not None:
+                payload= value
+            else:
+                code = ResponseCode.NOT_FOUND
+        case Operation.SET:
+            db.set(message.key, message.value)
+
+        case _:
+            code = ResponseCode.ERROR
+
+    return  Response(code=code, payload=payload)
 
 async def handler(reader:asyncio.StreamReader, writer:asyncio.StreamWriter):
     try:
         while True:
-            message = await recv_message(reader)
-            await send_message(writer, b"Got this from you ((" + message + b")) Thank you")
+            raw_message = await recv_socket_message(reader)
+            try:
+                rsp = _handle_message(raw_message)
+            except Exception as e:
+                rsp = Response(code=ResponseCode.ERROR, payload=str(e).encode())
+            await send_socket_message(writer, encode_response(rsp))
     except asyncio.IncompleteReadError:
         pass
     finally:
